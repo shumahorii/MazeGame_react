@@ -89,10 +89,34 @@ const App: React.FC = () => {
   const [playerX, setPlayerX] = useState(START_X);
   const [playerY, setPlayerY] = useState(START_Y);
 
-  // コンポーネントがマウントされた時に迷路を生成して状態にセット
+  // タイマーの秒数（経過時間）を管理する状態
+  const [time, setTime] = useState(0);
+
+  // ゴールに到達したかどうかを判定する状態
+  const [isGoalReached, setIsGoalReached] = useState(false);
+
+  // コンポーネントがマウントされたときに迷路を生成し、状態を初期化する
   useEffect(() => {
-    setMaze(generateMaze(MAZE_WIDTH, MAZE_HEIGHT));
+    setMaze(generateMaze(MAZE_WIDTH, MAZE_HEIGHT)); // 迷路を生成
+    setPlayerX(START_X); // プレイヤーの位置を初期化
+    setPlayerY(START_Y);
+    setTime(0); // タイマーをリセット
+    setIsGoalReached(false); // ゴール状態をリセット
   }, []);
+
+  // ⏱ タイマーのカウントアップ処理
+  useEffect(() => {
+    // ゴールに到達していたらタイマーを止める
+    if (isGoalReached) return;
+
+    // 1秒ごとにタイマーを1秒加算する
+    const timer = setInterval(() => {
+      setTime((prev) => prev + 1);
+    }, 1000);
+
+    // コンポーネントがアンマウントされたときにタイマーを止める
+    return () => clearInterval(timer);
+  }, [isGoalReached]);
 
   // キーボード操作を検知してプレイヤーを動かす処理
   useEffect(() => {
@@ -113,6 +137,11 @@ const App: React.FC = () => {
       if (maze[ny]?.[nx] === 1) {
         setPlayerX(nx);
         setPlayerY(ny);
+
+        // ゴール地点に到達していたらフラグを立てる
+        if (nx === GOAL_X && ny === GOAL_Y) {
+          setIsGoalReached(true);
+        }
       }
     };
 
@@ -121,38 +150,46 @@ const App: React.FC = () => {
 
     // コンポーネントがアンマウントされるときにリスナーを解除
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [playerX, playerY, maze]); // 依存配列にプレイヤー位置と迷路を指定
+  }, [playerX, playerY, maze]);
 
   // -----------------------------
   // 描画処理
   // -----------------------------
   return (
-    <div className="maze">
-      {maze.map((row, y) =>
-        row.map((cell, x) => {
-          // 現在のマスがプレイヤー位置かどうか
-          const isPlayer = x === playerX && y === playerY;
+    <div>
+      {/* タイマーの表示（クリアしたら 🎉 を追加表示） */}
+      <h2>
+        Time: {time}s {isGoalReached && '🎉 Clear!'}
+      </h2>
 
-          // 現在のマスがゴールかどうか
-          const isGoal = x === GOAL_X && y === GOAL_Y;
+      {/* 迷路マップの描画 */}
+      <div className="maze">
+        {maze.map((row, y) =>
+          row.map((cell, x) => {
+            // 現在のマスがプレイヤー位置かどうか
+            const isPlayer = x === playerX && y === playerY;
 
-          // 各マスを <div> 要素として描画し、クラス名でスタイルを変更
-          return (
-            <div
-              key={`${x}-${y}`} // 各マスのキーを座標で一意に設定
-              className={
-                isPlayer
-                  ? 'cell player' // プレイヤーなら青色
-                  : isGoal
-                    ? 'cell goal' // ゴールなら赤色
-                    : cell === 1
-                      ? 'cell path' // 通路なら白
-                      : 'cell wall' // 壁なら黒
-              }
-            />
-          );
-        })
-      )}
+            // 現在のマスがゴールかどうか
+            const isGoal = x === GOAL_X && y === GOAL_Y;
+
+            // 各マスを <div> 要素として描画し、クラス名でスタイルを変更
+            return (
+              <div
+                key={`${x}-${y}`} // 各マスのキーを座標で一意に設定
+                className={
+                  isPlayer
+                    ? 'cell player' // プレイヤーなら青色
+                    : isGoal
+                      ? 'cell goal' // ゴールなら赤色
+                      : cell === 1
+                        ? 'cell path' // 通路なら白
+                        : 'cell wall' // 壁なら黒
+                }
+              />
+            );
+          })
+        )}
+      </div>
     </div>
   );
 };
